@@ -1,3 +1,5 @@
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
 module.exports.getUsers = (req, res) => {
@@ -31,17 +33,35 @@ module.exports.getUserId = (req, res) => {
 };
 
 module.exports.createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
+  if (password.length < 8) {
+    res.status(400).send({ message: 'Длина пароля должна быть не менее 8 символов' });
+    return;
+  }
 
-  User.create({ name, about, avatar })
-
-    .then((user) => res.send({ data: user }))
+  bcrypt.hash(password, 10)
+    .then((hash) => User.create({
+      name, about, avatar, email, password: hash,
+    }))
+    .then((user) => {
+      if (user) {
+        res.status(201).send({
+          data: {
+            name: user.name, about: user.about, avatar: user.avatar, email: user.email,
+          },
+        });
+      }
+    })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: err.message });
-        return;
+        res.status(400).send({ message: 'Данные пользователя введены некорректно' });
+      } else if (err.code === 11000) {
+        res.status(400).send({ message: 'Пользователь с таким e-mail уже зарегистрирован' });
+      } else {
+        res.status(500).send({ message: err.message });
       }
-      res.status(500).send({ message: err.message });
     });
 };
 
@@ -94,5 +114,27 @@ module.exports.updateAvatar = (req, res) => {
         return;
       }
       res.status(500).send({ message: err.message });
+    });
+};
+
+module.exports.login = (req, res) => {
+  const { email, password } = req.body;
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const { NODE_ENV, JWT_SECRET } = process.env;
+      const token = jwt.sign({ _id: user._id }, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret', { expiresIn: '7d' });
+      res.cookie('jwt', token, {
+        maxAge: 3600000 * 24 * 7,
+        httpOnly: true,
+        sameSite: true,
+        secure: true,
+      })
+        .end('Успешная авторизация');
+    })
+
+    .catch((err) => {
+      console.log(err);
+      res.status(401).send({ message: err.message });
     });
 };

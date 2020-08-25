@@ -1,14 +1,28 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const routerCards = require('./routes/cards');
 const routerUsers = require('./routes/users');
+const { login, createUser } = require('./controllers/users');
 const config = require('./config.js');
+const auth = require('./middlewares/auth');
 
 const app = express();
 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+
+app.use(helmet());
+app.use(limiter);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 mongoose.connect(config.DATABASE_URL, {
   useNewUrlParser: true,
@@ -17,14 +31,9 @@ mongoose.connect(config.DATABASE_URL, {
   useUnifiedTopology: true,
 });
 
-app.use((req, res, next) => {
-  req.user = {
-    _id: '5f3abd97ea15d311744336f4',
-  };
-
-  next();
-});
-
+app.post('/signin', login);
+app.post('/signup', createUser);
+app.use(auth);
 app.use('/cards', routerCards);
 app.use('/users', routerUsers);
 

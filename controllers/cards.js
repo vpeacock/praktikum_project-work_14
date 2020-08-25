@@ -23,13 +23,18 @@ module.exports.createCard = (req, res) => {
 
 module.exports.deleteCard = (req, res) => {
   const { cardId } = req.params;
-  Card.findByIdAndRemove(cardId)
+  Card.findById(cardId)
+    .populate('owner')
     .then((card) => {
       if (!card) {
         res.status(404).send({ message: 'Карточки с таким id не существует' });
         return;
       }
-      res.send({ data: card });
+      if (card.owner.id !== req.user._id) {
+        res.status(401).send({ message: 'Недостаточно прав' });
+        return;
+      }
+      Card.deleteOne(card).then(() => res.send({ data: card }));
     })
     .catch((err) => {
       if (err.name === 'CastError') {
