@@ -11,7 +11,7 @@ module.exports.getUsers = (req, res) => {
       }
       res.send({ data: users });
     })
-    .catch((err) => res.status(500).send({ message: err.message }));
+    .catch(() => res.status(500).send({ message: 'Внутренняя ошибка сервера' }));
 };
 
 module.exports.getUserId = (req, res) => {
@@ -28,7 +28,7 @@ module.exports.getUserId = (req, res) => {
         return;
       }
 
-      res.status(500).send({ message: err.message });
+      res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
 
@@ -36,7 +36,7 @@ module.exports.createUser = (req, res) => {
   const {
     name, about, avatar, email, password,
   } = req.body;
-  if (password.length < 8) {
+  if (!password || password.trim().length < 8) {
     res.status(400).send({ message: 'Длина пароля должна быть не менее 8 символов' });
     return;
   }
@@ -57,10 +57,10 @@ module.exports.createUser = (req, res) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(400).send({ message: 'Данные пользователя введены некорректно' });
-      } else if (err.code === 11000) {
-        res.status(400).send({ message: 'Пользователь с таким e-mail уже зарегистрирован' });
+      } else if ((err.name === 'MongoError' && err.code === 11000)) {
+        res.status(409).send({ message: 'Пользователь с таким e-mail уже зарегистрирован' });
       } else {
-        res.status(500).send({ message: err.message });
+        res.status(500).send({ message: 'Внутренняя ошибка сервера' });
       }
     });
 };
@@ -83,10 +83,10 @@ module.exports.updateUser = (req, res) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: err.message });
+        res.status(400).send({ message: 'Неверный запрос' });
         return;
       }
-      res.status(500).send({ message: err.message });
+      res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
 
@@ -110,10 +110,10 @@ module.exports.updateAvatar = (req, res) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: err.message });
+        res.status(400).send({ message: 'Неверный запрос' });
         return;
       }
-      res.status(500).send({ message: err.message });
+      res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
 
@@ -128,13 +128,12 @@ module.exports.login = (req, res) => {
         maxAge: 3600000 * 24 * 7,
         httpOnly: true,
         sameSite: true,
-        secure: true,
       })
         .end('Успешная авторизация');
     })
 
     .catch((err) => {
       console.log(err);
-      res.status(401).send({ message: err.message });
+      res.status(401).send({ message: 'Необходима авторизация' });
     });
 };

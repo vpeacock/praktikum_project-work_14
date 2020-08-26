@@ -3,7 +3,7 @@ const Card = require('../models/card');
 module.exports.getCards = (req, res) => {
   Card.find({})
     .then((cards) => res.send({ data: cards }))
-    .catch((err) => res.status(500).send({ message: err.message }));
+    .catch(() => res.status(500).send({ message: 'Внутренняя ошибка сервера' }));
 };
 
 module.exports.createCard = (req, res) => {
@@ -14,10 +14,10 @@ module.exports.createCard = (req, res) => {
     .then((card) => res.send({ data: card }))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(400).send({ message: err.message });
+        res.status(400).send({ message: 'Неверный запрос' });
         return;
       }
-      res.status(500).send({ message: err.message });
+      res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
 
@@ -25,22 +25,24 @@ module.exports.deleteCard = (req, res) => {
   const { cardId } = req.params;
   Card.findById(cardId)
     .populate('owner')
+    .orFail()
     .then((card) => {
-      if (!card) {
-        res.status(404).send({ message: 'Карточки с таким id не существует' });
-        return;
-      }
-      if (card.owner.id !== req.user._id) {
-        res.status(401).send({ message: 'Недостаточно прав' });
+      if (card.owner.id.toString() !== req.user.cardId) {
+        res.status(403).send({ message: 'Запрещено' });
         return;
       }
       Card.deleteOne(card).then(() => res.send({ data: card }));
     })
     .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        res.status(404).send({ message: 'Пользователя с таким id не существует' });
+        return;
+      }
+
       if (err.name === 'CastError') {
         res.status(400).send({ message: 'Некорректный формат ID' });
         return;
-      } res.status(500).send({ message: err.message });
+      } res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
 
@@ -64,7 +66,7 @@ module.exports.likeCard = (req, res) => {
       if (err.name === 'CastError') {
         res.status(400).send({ message: 'Некорректный формат ID' });
         return;
-      } res.status(500).send({ message: err.message });
+      } res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
 
@@ -88,6 +90,6 @@ module.exports.dislikeCard = (req, res) => {
       if (err.name === 'CastError') {
         res.status(400).send({ message: 'Некорректный формат ID' });
         return;
-      } res.status(500).send({ message: err.message });
+      } res.status(500).send({ message: 'Внутренняя ошибка сервера' });
     });
 };
