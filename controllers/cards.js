@@ -27,7 +27,7 @@ module.exports.deleteCard = (req, res) => {
     .populate('owner')
     .orFail()
     .then((card) => {
-      if (card.owner.id.toString() !== req.user.cardId) {
+      if (card.owner.id.toString() !== req.user._id) {
         res.status(403).send({ message: 'Запрещено' });
         return;
       }
@@ -35,7 +35,7 @@ module.exports.deleteCard = (req, res) => {
     })
     .catch((err) => {
       if (err.name === 'DocumentNotFoundError') {
-        res.status(404).send({ message: 'Пользователя с таким id не существует' });
+        res.status(404).send({ message: 'Карточка с таким id не существует' });
         return;
       }
 
@@ -55,14 +55,16 @@ module.exports.likeCard = (req, res) => {
     { new: true },
   )
     .populate('likes')
+    .orFail()
     .then((card) => {
-      if (!card) {
-        res.status(404).send({ message: 'Карточка с таким id не найдена' });
-        return;
-      }
       res.send({ data: card });
     })
     .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        res.status(404).send({ message: 'Карточка с таким id не существует' });
+        return;
+      }
+
       if (err.name === 'CastError') {
         res.status(400).send({ message: 'Некорректный формат ID' });
         return;
@@ -79,14 +81,16 @@ module.exports.dislikeCard = (req, res) => {
     { new: true },
   )
     .populate('likes')
+    .orFail()
     .then((card) => {
-      if (!card) {
-        res.status(404).send({ message: 'Карточка  с таким id не найдена' });
-        return;
-      }
       res.send({ data: card });
     })
     .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        res.status(404).send({ message: 'Карточка с таким id не существует' });
+        return;
+      }
+
       if (err.name === 'CastError') {
         res.status(400).send({ message: 'Некорректный формат ID' });
         return;

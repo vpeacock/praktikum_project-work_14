@@ -74,14 +74,16 @@ module.exports.updateUser = (req, res) => {
     { name, about },
     { new: true, runValidators: true },
   )
+    .orFail()
     .then((user) => {
-      if (!user) {
-        res.status(404).send({ message: 'Пользователь не существует' });
-        return;
-      }
       res.send({ data: user });
     })
     .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        res.status(404).send({ message: 'Пользователь с таким id не существует' });
+        return;
+      }
+
       if (err.name === 'ValidationError') {
         res.status(400).send({ message: 'Неверный запрос' });
         return;
@@ -102,13 +104,16 @@ module.exports.updateAvatar = (req, res) => {
       runValidators: true,
     },
   )
+    .orFail()
     .then((user) => {
-      if (!user) {
-        res.status(404).send({ message: 'Пользователь не существует' });
-        return;
-      } res.send({ data: user });
+      res.send({ data: user });
     })
     .catch((err) => {
+      if (err.name === 'DocumentNotFoundError') {
+        res.status(404).send({ message: 'Пользователь с таким id не существует' });
+        return;
+      }
+
       if (err.name === 'ValidationError') {
         res.status(400).send({ message: 'Неверный запрос' });
         return;
@@ -132,8 +137,7 @@ module.exports.login = (req, res) => {
         .end('Успешная авторизация');
     })
 
-    .catch((err) => {
-      console.log(err);
+    .catch(() => {
       res.status(401).send({ message: 'Необходима авторизация' });
     });
 };
