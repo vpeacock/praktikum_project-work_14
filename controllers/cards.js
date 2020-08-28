@@ -11,7 +11,9 @@ module.exports.createCard = (req, res) => {
   const owner = req.user._id;
 
   Card.create({ name, link, owner })
-    .then((card) => res.send({ data: card }))
+    .then((card) => {
+      res.send({ data: card });
+    })
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(400).send({ message: 'Неверный запрос' });
@@ -24,16 +26,16 @@ module.exports.createCard = (req, res) => {
 module.exports.deleteCard = (req, res) => {
   const { cardId } = req.params;
   Card.findById(cardId)
-    .populate('owner')
     .orFail()
     .then((card) => {
-      if (card.owner.id.toString() !== req.user._id) {
+      if (!card.owner.equals(req.user._id)) {
         res.status(403).send({ message: 'Запрещено' });
         return;
       }
       Card.deleteOne(card).then(() => res.send({ data: card }));
     })
     .catch((err) => {
+      console.log(err.message);
       if (err.name === 'DocumentNotFoundError') {
         res.status(404).send({ message: 'Карточка с таким id не существует' });
         return;
@@ -54,9 +56,9 @@ module.exports.likeCard = (req, res) => {
     { $addToSet: { likes: req.user._id } },
     { new: true },
   )
-    .populate('likes')
     .orFail()
     .then((card) => {
+      console.log(card);
       res.send({ data: card });
     })
     .catch((err) => {
@@ -80,7 +82,6 @@ module.exports.dislikeCard = (req, res) => {
     { $pull: { likes: req.user._id } },
     { new: true },
   )
-    .populate('likes')
     .orFail()
     .then((card) => {
       res.send({ data: card });
